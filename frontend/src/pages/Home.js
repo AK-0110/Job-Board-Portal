@@ -5,14 +5,14 @@ import JobCard from '../components/shared/JobCard';
 import './Home.css';
 
 const CATEGORIES = [
-  { emoji: '💻', name: 'Engineering',  count: '3,240 open roles', value: 'Engineering' },
-  { emoji: '🎨', name: 'Design',       count: '1,180 open roles', value: 'Design' },
-  { emoji: '📊', name: 'Marketing',    count: '980 open roles',   value: 'Marketing' },
-  { emoji: '💰', name: 'Finance',      count: '760 open roles',   value: 'Finance' },
-  { emoji: '🤝', name: 'Sales',        count: '1,420 open roles', value: 'Sales' },
-  { emoji: '📱', name: 'Product',      count: '890 open roles',   value: 'Product' },
-  { emoji: '🔬', name: 'Data & AI',    count: '2,100 open roles', value: 'Data & AI' },
-  { emoji: '⚕️', name: 'Healthcare',   count: '640 open roles',   value: 'Healthcare' },
+  { emoji: '💻', name: 'Engineering',  value: 'Engineering' },
+  { emoji: '🎨', name: 'Design',       value: 'Design' },
+  { emoji: '📊', name: 'Marketing',    value: 'Marketing' },
+  { emoji: '💰', name: 'Finance',      value: 'Finance' },
+  { emoji: '🤝', name: 'Sales',        value: 'Sales' },
+  { emoji: '📱', name: 'Product',      value: 'Product' },
+  { emoji: '🔬', name: 'Data & AI',    value: 'Data & AI' },
+  { emoji: '⚕️', name: 'Healthcare',   value: 'Healthcare' },
 ];
 
 export default function Home() {
@@ -20,13 +20,31 @@ export default function Home() {
   const [location, setLocation] = useState('');
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [totalJobs, setTotalJobs] = useState(0);
+  const [categoryCounts, setCategoryCounts] = useState({});
   const navigate = useNavigate();
 
   useEffect(() => {
+    // Fetch latest jobs
     api.get('/jobs?limit=6&sort=-createdAt')
-      .then(r => setJobs(r.data.data))
+      .then(r => {
+        setJobs(r.data.data);
+        setTotalJobs(r.data.total);
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
+
+    // Fetch count per category
+    CATEGORIES.forEach(cat => {
+      api.get(`/jobs?category=${cat.value}&limit=1`)
+        .then(r => {
+          setCategoryCounts(prev => ({
+            ...prev,
+            [cat.value]: r.data.total || 0
+          }));
+        })
+        .catch(() => {});
+    });
   }, []);
 
   const handleSearch = (e) => {
@@ -54,7 +72,7 @@ export default function Home() {
             <div className="hero-left">
               <div className="hero-tag">
                 <span className="tag-dot" />
-                12,000+ roles updated today
+                {totalJobs > 0 ? `${totalJobs.toLocaleString()} roles available now` : 'Roles updated daily'}
               </div>
 
               <h1 className="hero-h1">
@@ -129,7 +147,7 @@ export default function Home() {
         <div className="container">
           <div className="stats-strip-inner">
             {[
-              { num: '12,400+', lbl: 'Active listings' },
+              { num: totalJobs > 0 ? totalJobs.toLocaleString() : '0', lbl: 'Active listings' },
               { num: '4,200+',  lbl: 'Verified companies' },
               { num: '98k+',    lbl: 'Registered candidates' },
               { num: '87%',     lbl: 'Placement rate' },
@@ -151,16 +169,25 @@ export default function Home() {
             <h2 className="sec-title">Every industry,<br />one platform.</h2>
           </div>
           <div className="cats-grid">
-            {CATEGORIES.map(cat => (
-              <button key={cat.value} className="cat-card" onClick={() => navigate(`/jobs?category=${cat.value}`)}>
-                <div className="cat-icon-wrap">{cat.emoji}</div>
-                <div className="cat-info">
-                  <div className="cat-name">{cat.name}</div>
-                  <div className="cat-count">{cat.count}</div>
-                </div>
-                <div className="cat-arrow">→</div>
-              </button>
-            ))}
+            {CATEGORIES.map(cat => {
+              const count = categoryCounts[cat.value] || 0;
+              return (
+                <button
+                  key={cat.value}
+                  className="cat-card"
+                  onClick={() => navigate(`/jobs?category=${cat.value}`)}
+                >
+                  <div className="cat-icon-wrap">{cat.emoji}</div>
+                  <div className="cat-info">
+                    <div className="cat-name">{cat.name}</div>
+                    <div className="cat-count">
+                      {count > 0 ? `${count.toLocaleString()} open ${count === 1 ? 'role' : 'roles'}` : 'No roles yet'}
+                    </div>
+                  </div>
+                  <div className="cat-arrow">→</div>
+                </button>
+              );
+            })}
           </div>
         </div>
       </section>
